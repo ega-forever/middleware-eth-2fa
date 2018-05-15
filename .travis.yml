@@ -21,14 +21,14 @@ install:
 
 before_script:
 
-    - export SMART_CONTRACTS_PATH=$TRAVIS_BUILD_DIR/node_modules/middleware_eth.chronoSCProcessor/node_modules/chronobank-smart-contracts/build/contracts
+    - export SMART_CONTRACTS_PATH=$TRAVIS_BUILD_DIR/node_modules/chronobank-smart-contracts/build/contracts
     - export ORACLE_PRIVATE_KEY=6b9027372deb53f4ae973a5614d8a57024adf33126ece6b587d9e08ba901c0d2
 
     - cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.blockProcessor && npm install
     - cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.blockProcessor && pm2 start ipcConverter.js
     - sleep 30 && cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.chronoSCProcessor && npm install
-    - cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.chronoSCProcessor/node_modules/chronobank-smart-contracts && mv migrations migrations_full && mv migrations-dev-full migrations
-    - sleep 30 && cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.chronoSCProcessor && npm run deploy:contracts
+    - cd $TRAVIS_BUILD_DIR/node_modules/chronobank-smart-contracts && mv migrations migrations_full && mv migrations-dev-full migrations
+    - cd $TRAVIS_BUILD_DIR/node_modules/chronobank-smart-contracts && ../truffle/build/cli.bundled.js migrate
     - sleep 30 && cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.chronoSCProcessor && pm2 start index.js
     - sleep 30 && cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.blockProcessor && pm2 start index.js
     - sleep 30 && cd $TRAVIS_BUILD_DIR

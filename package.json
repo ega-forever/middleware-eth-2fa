@@ -8,6 +8,7 @@
     "dotenv": "^4.0.0",
     "eth-crypto": "^1.1.1",
     "ethereumjs-wallet": "^0.6.0",
+    "ethers": "^3.0.16",
     "lodash": "^4.17.4",
     "middleware_service.sdk": "github:chronobank/middleware-service-sdk",
     "mongoose": "^4.11.11",
