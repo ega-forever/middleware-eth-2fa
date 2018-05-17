@@ -19,6 +19,7 @@ mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri);
 const expect = require('chai').expect,
   Wallet = require('ethereumjs-wallet'),
   request = require('request-promise'),
+  net = require('net'),
   //awaitLastBlock = require('./helpers/awaitLastBlock'),
   clearQueues = require('./helpers/clearQueues'),
   //connectToQueue = require('./helpers/connectToQueue'),
@@ -37,13 +38,13 @@ describe('core/2fa', function () {
     ctx.amqpInstance = await amqp.connect(config.nodered.functionGlobalContext.settings.rabbit.url);
     await clearQueues(ctx.amqpInstance);
 
-    ctx.web3 = new Web3(config.nodered.functionGlobalContext.settings.web3.provider);
-    const contractData = await loadContracts(config.nodered.functionGlobalContext.settings.web3.provider);
+    const providerSet = /http:\/\//.test(process.env.WEB3_URI) ?
+      new Web3.providers.HttpProvider(process.env.WEB3_URI) :
+      new Web3.providers.IpcProvider(`${/^win/.test(process.platform) ? '\\\\.\\pipe\\' : ''}${process.env.WEB3_URI}`, net);
 
-    ctx.contracts = {
-      instance: contractData.contracts,
-      events: contractData.smEvents
-    };
+
+    ctx.web3 = new Web3(providerSet);
+    ctx.contracts = await loadContracts(providerSet);
 
     const userFromPrivateKey = '993130d3dd4de71254a94a47fdacb1c9f90dd33be8ad06b687bd95f073514a97'; //accounts[1]
     const userFromWallet = Wallet.fromPrivateKey(Buffer.from(userFromPrivateKey, 'hex'));
@@ -79,20 +80,20 @@ describe('core/2fa', function () {
 
   it('set oracle address and price', async () => {
 
-    const contractOracle = await ctx.contracts.instance.WalletsManager.getOracleAddress();
+    const contractOracle = await ctx.contracts.WalletsManager.getOracleAddress();
     if (contractOracle !== ctx.users.oracle.address)
-      await ctx.contracts.instance.WalletsManager.setOracleAddress(ctx.users.oracle.address, {from: ctx.users.oracle.address});
+      await ctx.contracts.WalletsManager.setOracleAddress(ctx.users.oracle.address, {from: ctx.users.oracle.address});
 
-    const price = await ctx.contracts.instance.WalletsManager.getOraclePrice();
+    const price = await ctx.contracts.WalletsManager.getOraclePrice();
 
     if (price.toString() === '0')
-      await ctx.contracts.instance.WalletsManager.setOraclePrice(10, {from: ctx.users.oracle.address});
+      await ctx.contracts.WalletsManager.setOraclePrice(10, {from: ctx.users.oracle.address});
 
   });
 
   it('create wallet', async () => {
 
-    let createWalletTx = await ctx.contracts.instance.WalletsManager.create2FAWallet(0, {
+    let createWalletTx = await ctx.contracts.WalletsManager.create2FAWallet(0, {
       from: ctx.users.userFrom.address,
       gas: 5700000
     });
@@ -113,7 +114,7 @@ describe('core/2fa', function () {
 
     const transferAmount = ctx.web3.toWei(10, 'ether');
 
-    let wallet = ctx.contracts.instance.Wallet.at(walletList[0].address);
+    let wallet = ctx.contracts.Wallet.at(walletList[0].address);
 
     await Promise.promisify(ctx.web3.eth.sendTransaction)({to: walletList[0].address, value: transferAmount, from: ctx.users.userFrom.address});
 

@@ -3,17 +3,30 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-const config = require('../../config'),
-  eventCtrl = require('middleware_eth.chronoSCProcessor/controllers/eventsCtrl');
+const requireAll = require('require-all'),
+  contract = require('truffle-contract'),
+  path = require('path');
 
 module.exports = async (provider) => {
-  let contracts = {};
-  const smEvents = eventCtrl(config.nodered.functionGlobalContext.contracts);
 
-  for (let contract_name in config.nodered.functionGlobalContext.contracts)
-    if (config.nodered.functionGlobalContext.contracts.hasOwnProperty(contract_name)) {
-      config.nodered.functionGlobalContext.contracts[contract_name].setProvider(provider);
-      contracts[contract_name] = await config.nodered.functionGlobalContext.contracts[contract_name].deployed().catch(()=> config.nodered.functionGlobalContext.contracts[contract_name]);
+  let contractsDeployed = {};
+
+  const contracts = requireAll({
+    dirname: process.env.SMART_CONTRACTS_PATH ? path.resolve(process.env.SMART_CONTRACTS_PATH) : path.resolve(__dirname, '../node_modules/chronobank-smart-contracts/build/contracts'),
+    resolve: Contract => {
+      let con = contract(Contract);
+      con.setProvider(provider);
+      return con;
     }
-  return {smEvents, contracts};
+  });
+
+  for (let contract_name in contracts)
+    if (contracts.hasOwnProperty(contract_name))
+      try {
+        contractsDeployed[contract_name] = await contracts[contract_name].deployed();
+      } catch (e) {
+        contractsDeployed[contract_name] = contracts[contract_name];
+      }
+
+  return contractsDeployed;
 };
