@@ -22,7 +22,7 @@ const path = require('path'),
   }),
   mongoose = require('mongoose');
 
-const provider = new WalletProvider(wallet, process.env.WEB3_URI || 'tmp/development/geth.ipc');
+const provider = new WalletProvider(wallet, process.env.WEB3_URI || '/tmp/development/geth.ipc');
 
 
 let config = {

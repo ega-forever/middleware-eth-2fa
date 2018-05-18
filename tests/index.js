@@ -38,7 +38,7 @@ describe('core/2fa', function () {
     ctx.amqpInstance = await amqp.connect(config.nodered.functionGlobalContext.settings.rabbit.url);
     await clearQueues(ctx.amqpInstance);
 
-    const web3_uri = process.env.WEB3_URI || 'tmp/development/geth.ipc';
+    const web3_uri = process.env.WEB3_URI || '/tmp/development/geth.ipc';
 
     const providerSet = /http:\/\//.test(web3_uri) ?
       new Web3.providers.HttpProvider(web3_uri) :
