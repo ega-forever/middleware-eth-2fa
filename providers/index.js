@@ -1,9 +1,28 @@
 const ProviderEngine = require('web3-provider-engine'),
   FiltersSubprovider = require('web3-provider-engine/subproviders/filters.js'),
-  WalletSubprovider = require('ethereumjs-wallet/provider-engine'),
+  //WalletSubprovider = require('ethereumjs-wallet/provider-engine'),
+  HookedWalletEthTxSubprovider = require('web3-provider-engine/subproviders/hooked-wallet-ethtx'),
+  inherits = require('util').inherits,
   Web3Subprovider = require('web3-provider-engine/subproviders/web3.js'),
   Web3 = require('web3'),
   net = require('net');
+
+inherits(WalletSubprovider, HookedWalletEthTxSubprovider);
+
+function WalletSubprovider (wallet, opts = {}) {
+  opts.getAccounts = function (cb) {
+
+    cb(null, [wallet.getAddressString()]);
+  };
+
+  opts.getPrivateKey = function (address, cb) {
+    address !== wallet.getAddressString() ?
+      cb(new Error('Account not found')) :
+      cb(null, wallet.getPrivateKey());
+  };
+
+  WalletSubprovider.super_.call(this, opts);
+}
 
 function WalletProvider (wallet, uri) {
   this.wallet = wallet;
@@ -11,9 +30,8 @@ function WalletProvider (wallet, uri) {
 
   this.engine = new ProviderEngine();
 
-  this.engine.addProvider(new WalletSubprovider(this.wallet, {}));
+  this.engine.addProvider(new WalletSubprovider(this.wallet));
   this.engine.addProvider(new FiltersSubprovider());
-
 
   const provider = /http:\/\//.test(uri) ?
     new Web3.providers.HttpProvider(uri) :
