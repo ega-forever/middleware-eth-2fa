@@ -46,7 +46,7 @@ let config = {
       collectionPrefix: process.env.NODE_RED_MONGO_COLLECTION_PREFIX || '',
     },
     useLocalStorage: false,
-    httpServer: parseInt(process.env.USE_HTTP_SERVER) || false,
+    httpServer: true,
     autoSyncMigrations: process.env.NODERED_AUTO_SYNC_MIGRATIONS || true,
     customNodesDir: [path.join(__dirname, '../')],
     migrationsDir: path.join(__dirname, '../migrations'),
