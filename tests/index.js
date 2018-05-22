@@ -20,12 +20,9 @@ const expect = require('chai').expect,
   Wallet = require('ethereumjs-wallet'),
   request = require('request-promise'),
   net = require('net'),
-  //awaitLastBlock = require('./helpers/awaitLastBlock'),
+  awaitLastBlock = require('./helpers/awaitLastBlock'),
   clearQueues = require('./helpers/clearQueues'),
-  //connectToQueue = require('./helpers/connectToQueue'),
-  //consumeMessagesUntil = require('./helpers/consumeMessagesUntil'),
   loadContracts = require('./helpers/loadContracts'),
-  //executeAddCBE = require('./helpers/executeAddCBE'),
   _ = require('lodash'),
   Web3 = require('web3'),
   amqp = require('amqplib');
@@ -68,7 +65,7 @@ describe('core/2fa', function () {
       }
     };
 
-    //return await awaitLastBlock(ctx.web3);
+    return await awaitLastBlock();
   });
 
   after(() => {
@@ -107,7 +104,7 @@ describe('core/2fa', function () {
   });
 
   it('transfer', async () => {
-    await Promise.delay(20000);
+    await Promise.delay(60000);
 
     let walletList = await request({
       uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.address}`,
@@ -135,7 +132,7 @@ describe('core/2fa', function () {
   });
 
   it('confirm', async () => {
-    await Promise.delay(20000);
+    await Promise.delay(60000);
 
     let walletList = await request({
       uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.address}`,
