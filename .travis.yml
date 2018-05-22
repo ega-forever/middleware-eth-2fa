@@ -26,7 +26,6 @@ before_script:
 
     - cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.blockProcessor && pm2 start ipcConverter.js
     - cd $TRAVIS_BUILD_DIR/node_modules/chronobank-smart-contracts && rm -rf build
-    - cd $TRAVIS_BUILD_DIR/node_modules/chronobank-smart-contracts && rm -rf migrations && mv migrations-dev-full migrations
     - cd $TRAVIS_BUILD_DIR/node_modules/chronobank-smart-contracts && ../truffle/build/cli.bundled.js migrate
     - sleep 30 && cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.blockProcessor && pm2 start index.js
     - sleep 120 && cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.chronoSCProcessor && pm2 start index.js
