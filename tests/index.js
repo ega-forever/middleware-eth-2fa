@@ -65,7 +65,7 @@ describe('core/2fa', function () {
       }
     };
 
-    return await awaitLastBlock();
+    //return await awaitLastBlock();
   });
 
   after(() => {
