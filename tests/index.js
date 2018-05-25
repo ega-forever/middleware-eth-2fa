@@ -46,10 +46,10 @@ describe('core/2fa', function () {
       }
     };
 
-    ctx.users.owner.web3 = new Web3(new WalletProvider(ctx.users.owner.wallet, process.env.WEB3_URI || '/tmp/development/geth.ipc'));
-    ctx.users.userFrom.web3 = new Web3(new WalletProvider(ctx.users.userFrom.wallet, process.env.WEB3_URI || '/tmp/development/geth.ipc'));
-    ctx.users.userTo.web3 = new Web3(new WalletProvider(ctx.users.userTo.wallet, process.env.WEB3_URI || '/tmp/development/geth.ipc'));
-    ctx.users.middleware.web3 = new Web3(new WalletProvider(ctx.users.middleware.wallet, process.env.WEB3_URI || '/tmp/development/geth.ipc'));
+    ctx.users.owner.web3 = new Web3(new WalletProvider(ctx.users.owner.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
+    ctx.users.userFrom.web3 = new Web3(new WalletProvider(ctx.users.userFrom.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
+    ctx.users.userTo.web3 = new Web3(new WalletProvider(ctx.users.userTo.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
+    ctx.users.middleware.web3 = new Web3(new WalletProvider(ctx.users.middleware.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
 
     //return await awaitLastBlock();
   });
