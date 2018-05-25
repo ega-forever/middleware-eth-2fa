@@ -7,22 +7,16 @@
 require('dotenv/config');
 
 const config = require('../config'),
-  mongoose = require('mongoose'),
   speakeasy = require('speakeasy'),
+  WalletProvider = require('../providers'),
   EthCrypto = require('eth-crypto'),
   Promise = require('bluebird');
-
-mongoose.Promise = Promise; // Use custom Promises
-mongoose.connect(config.mongo.data.uri, {useMongoClient: true});
-mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri);
 
 const expect = require('chai').expect,
   Wallet = require('ethereumjs-wallet'),
   request = require('request-promise'),
-  net = require('net'),
   awaitLastBlock = require('./helpers/awaitLastBlock'),
   clearQueues = require('./helpers/clearQueues'),
-  loadContracts = require('./helpers/loadContracts'),
   _ = require('lodash'),
   Web3 = require('web3'),
   amqp = require('amqplib');
@@ -35,93 +29,193 @@ describe('core/2fa', function () {
     ctx.amqpInstance = await amqp.connect(config.nodered.functionGlobalContext.settings.rabbit.url);
     await clearQueues(ctx.amqpInstance);
 
-    const web3_uri = process.env.WEB3_URI || '/tmp/development/geth.ipc';
-
-    const providerSet = /http:\/\//.test(web3_uri) ?
-      new Web3.providers.HttpProvider(web3_uri) :
-      new Web3.providers.IpcProvider(`${/^win/.test(process.platform) ? '\\\\.\\pipe\\' : ''}${web3_uri}`, net);
-
-
-    ctx.web3 = new Web3(providerSet);
-    ctx.contracts = await loadContracts(providerSet);
-
-    const userFromPrivateKey = '993130d3dd4de71254a94a47fdacb1c9f90dd33be8ad06b687bd95f073514a97'; //accounts[1]
-    const userFromWallet = Wallet.fromPrivateKey(Buffer.from(userFromPrivateKey, 'hex'));
-    const userAddress = `0x${userFromWallet.getAddress().toString('hex')}`;
-
-    const userToBalance = await Promise.promisify(ctx.web3.eth.getBalance)('0xa7c6c244e37ebaf1a9cc54a0ce74024ceec6cde9');
+    ctx.contracts = config.nodered.functionGlobalContext.contracts;
 
     ctx.users = {
-      oracle: {
-        address: '0x294f3c4670a56441f3133835a5cbb8baaf010f88'
+      owner: {
+        wallet: Wallet.fromPrivateKey(Buffer.from(process.env.OWNER_PRIVATE_KEY, 'hex'))
+      },
+      middleware: {
+        wallet: config.nodered.functionGlobalContext.settings.web3.wallet
       },
       userFrom: {
-        wallet: userFromWallet,
-        address: userAddress
+        wallet: Wallet.generate('1234')
       },
       userTo: {
-        address: '0xa7c6c244e37ebaf1a9cc54a0ce74024ceec6cde9',
-        balance: userToBalance
+        wallet: Wallet.generate('5678')
       }
     };
+
+    ctx.users.owner.web3 = new Web3(new WalletProvider(ctx.users.owner.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
+    ctx.users.userFrom.web3 = new Web3(new WalletProvider(ctx.users.userFrom.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
+    ctx.users.userTo.web3 = new Web3(new WalletProvider(ctx.users.userTo.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
+    ctx.users.middleware.web3 = new Web3(new WalletProvider(ctx.users.middleware.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
 
     //return await awaitLastBlock();
   });
 
   after(() => {
-    ctx.web3.currentProvider.connection.end();
-    return mongoose.disconnect();
   });
 
   afterEach(async () => {
     await clearQueues(ctx.amqpInstance);
   });
 
+  it('validating users balances has enough ethers', async () => {
+
+    ctx.users.userFrom.balance = await Promise.promisify(ctx.users.userFrom.web3.eth.getBalance)(ctx.users.userFrom.wallet.getAddressString());
+    ctx.users.userTo.balance = await Promise.promisify(ctx.users.userTo.web3.eth.getBalance)(ctx.users.userTo.wallet.getAddressString());
+    ctx.users.owner.balance = await Promise.promisify(ctx.users.owner.web3.eth.getBalance)(ctx.users.owner.wallet.getAddressString());
+    ctx.users.middleware.balance = await Promise.promisify(ctx.users.middleware.web3.eth.getBalance)(ctx.users.middleware.wallet.getAddressString());
+
+    expect(ctx.users.userFrom.balance.toNumber()).to.eq(0);
+    expect(ctx.users.userTo.balance.toNumber()).to.eq(0);
+    expect(ctx.users.owner.balance.toNumber()).to.be.above(parseInt(ctx.users.owner.web3.toWei(2, 'ether')));
+
+  });
+
+  it('sending 2 ethers to userFrom from owner', async () => {
+    const userFromTransferAmount = ctx.users.userFrom.web3.toWei(2, 'ether');
+    let userFromTranserTx = await Promise.promisify(ctx.users.owner.web3.eth.sendTransaction)({
+      to: ctx.users.userFrom.wallet.getAddressString(),
+      value: userFromTransferAmount,
+      from: ctx.users.owner.wallet.getAddressString()
+    });
+
+    let tx = await Promise.promisify(ctx.users.owner.web3.eth.getTransaction)(userFromTranserTx);
+    if (tx.blockNumber)
+      return;
+
+    let latestFilter = ctx.users.owner.web3.eth.filter('latest');
+
+    await new Promise(res => {
+      latestFilter.watch(async function (error) {
+        if (error)
+          return;
+        let tx = await Promise.promisify(ctx.users.owner.web3.eth.getTransaction)(userFromTranserTx);
+        if (tx.blockNumber) {
+          await new Promise(res => latestFilter.stopWatching(res));
+          res();
+        }
+      });
+    });
+  });
+
+  it('validating userFrom balance', async () => {
+    ctx.users.userFrom.balance = await Promise.promisify(ctx.users.userFrom.web3.eth.getBalance)(ctx.users.userFrom.wallet.getAddressString());
+    expect(ctx.users.userFrom.balance.toNumber()).to.eq(parseInt(ctx.users.owner.web3.toWei(2, 'ether')));
+
+  });
+
   it('set oracle address and price', async () => {
 
-    const contractOracle = await ctx.contracts.WalletsManager.getOracleAddress();
-    if (contractOracle !== ctx.users.oracle.address)
-      await ctx.contracts.WalletsManager.setOracleAddress(ctx.users.oracle.address, {from: ctx.users.oracle.address});
+    ctx.contracts.WalletsManager.setProvider(ctx.users.owner.web3.currentProvider);
+    ctx.contracts.Wallet.setProvider(ctx.users.owner.web3.currentProvider);
 
-    const price = await ctx.contracts.WalletsManager.getOraclePrice();
+    let walletsManager = await ctx.contracts.WalletsManager.deployed();
+    const contractOracle = await walletsManager.getOracleAddress();
 
-    if (price.toString() === '0')
-      await ctx.contracts.WalletsManager.setOraclePrice(10, {from: ctx.users.oracle.address});
+    if (contractOracle !== ctx.users.middleware.wallet.getAddressString()) {
+      const setOracleAddressTxEstimateGas = await walletsManager.setOracleAddress.estimateGas(ctx.users.middleware.wallet.getAddressString());
 
+      const setOracleAddressTx = await walletsManager.setOracleAddress(ctx.users.middleware.wallet.getAddressString(), {
+        from: ctx.users.owner.wallet.getAddressString(),
+        gas: parseInt(setOracleAddressTxEstimateGas * 1.2)
+      });
+
+      expect(setOracleAddressTx.tx).to.be.a('string');
+
+      const latestFilter = ctx.users.owner.web3.eth.filter('latest');
+
+      await new Promise(res => {
+        latestFilter.watch(async function (error) {
+          if (error)
+            return;
+          let tx = await Promise.promisify(ctx.users.owner.web3.eth.getTransaction)(setOracleAddressTx.tx);
+          if (tx.blockNumber) {
+            await new Promise(res => latestFilter.stopWatching(res));
+            res();
+          }
+        });
+      });
+    }
+
+    const estimatePrice = 3000000000 * 300000;
+    const price = await walletsManager.getOraclePrice();
+
+    if (parseInt(price.toString()) !== estimatePrice) {
+      const setOraclePriceTxEstimateGas = await walletsManager.setOraclePrice.estimateGas(estimatePrice);
+      await walletsManager.setOraclePrice(estimatePrice, {
+        from: ctx.users.owner.wallet.getAddressString(),
+        gas: parseInt(setOraclePriceTxEstimateGas * 1.2)
+      });
+    }
   });
 
   it('create wallet', async () => {
 
-    let createWalletTx = await ctx.contracts.WalletsManager.create2FAWallet(0, {
-      from: ctx.users.userFrom.address,
-      gas: 5700000
+    ctx.contracts.WalletsManager.setProvider(ctx.users.userFrom.web3.currentProvider);
+    const walletsManager = await ctx.contracts.WalletsManager.deployed();
+
+    const walletCreationEstimateGasPrice = await walletsManager.create2FAWallet.estimateGas(0);
+
+    let createWalletTx = await walletsManager.create2FAWallet(0, {
+      from: ctx.users.userFrom.wallet.getAddressString(),
+      gas: parseInt(walletCreationEstimateGasPrice * 1.5)
     });
 
     expect(createWalletTx.tx).to.be.a('string');
+
+    const latestFilter = ctx.users.userFrom.web3.eth.filter('latest');
+
+    await new Promise(res => {
+      latestFilter.watch(async function (error) {
+        if (error)
+          return;
+        let tx = await Promise.promisify(ctx.users.userFrom.web3.eth.getTransaction)(createWalletTx.tx);
+        if (tx.blockNumber) {
+          await new Promise(res => latestFilter.stopWatching(res));
+          res();
+        }
+      });
+    });
 
     const walletLog = _.find(createWalletTx.logs, {event: 'WalletCreated'});
     expect(walletLog).to.be.an('object');
   });
 
   it('transfer', async () => {
-    await Promise.delay(60000);
+    await Promise.delay(30000);
+
+    ctx.contracts.Wallet.setProvider(ctx.users.userFrom.web3.currentProvider);
+    const transferAmount = ctx.users.userFrom.web3.toWei(1, 'ether');
 
     let walletList = await request({
-      uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.address}`,
+      uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.wallet.getAddressString()}`,
       json: true
     });
 
-    const transferAmount = ctx.web3.toWei(10, 'ether');
-
     let wallet = ctx.contracts.Wallet.at(walletList[0].address);
 
-    await Promise.promisify(ctx.web3.eth.sendTransaction)({to: walletList[0].address, value: transferAmount, from: ctx.users.userFrom.address});
-
-
-    let transferTx = await wallet.transfer(ctx.users.userTo.address, transferAmount, 'ETH', {
+    await Promise.promisify(ctx.users.userFrom.web3.eth.sendTransaction)({
+      to: walletList[0].address,
       value: transferAmount,
-      from: ctx.users.userFrom.address,
-      gas: 5700000
+      gas: 50000,
+      from: ctx.users.userFrom.wallet.getAddressString()
+    });
+
+    let walletsManager = await ctx.contracts.WalletsManager.deployed();
+    const price = await walletsManager.getOraclePrice();
+
+    const walletTransferEstimateGasPrice = await wallet.transfer.estimateGas(ctx.users.userTo.wallet.getAddressString(), transferAmount, 'ETH', {
+      value: price,
+      from: ctx.users.userFrom.wallet.getAddressString()
+    });
+
+    let transferTx = await wallet.transfer(ctx.users.userTo.wallet.getAddressString(), transferAmount, 'ETH', {
+      value: price,
+      from: ctx.users.userFrom.wallet.getAddressString(),
+      gas: parseInt(walletTransferEstimateGasPrice * 1.2)
     });
 
     expect(transferTx.tx).to.be.a('string');
@@ -129,13 +223,26 @@ describe('core/2fa', function () {
     const walletLog = _.find(transferTx.logs, {event: 'MultisigWalletConfirmationNeeded'});
     expect(walletLog).to.be.an('object');
 
+    const latestFilter = ctx.users.userFrom.web3.eth.filter('latest');
+
+    await new Promise(res => {
+      latestFilter.watch(async function (error) {
+        if (error)
+          return;
+        let tx = await Promise.promisify(ctx.users.userFrom.web3.eth.getTransaction)(transferTx.tx);
+        if (tx.blockNumber) {
+          await new Promise(res => latestFilter.stopWatching(res));
+          res();
+        }
+      });
+    });
   });
 
-  it('confirm', async () => {
-    await Promise.delay(60000);
+  it('obtain secret', async () => {
+    await Promise.delay(10000);
 
     let walletList = await request({
-      uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.address}`,
+      uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.wallet.getAddressString()}`,
       json: true
     });
 
@@ -150,10 +257,41 @@ describe('core/2fa', function () {
       json: true
     });
 
-    const secret = await EthCrypto.decryptWithPrivateKey(`0x${ctx.users.userFrom.wallet.getPrivateKey().toString('hex')}`, keyEncoded);
+    ctx.users.userFrom.secret = await EthCrypto.decryptWithPrivateKey(`0x${ctx.users.userFrom.wallet.getPrivateKey().toString('hex')}`, keyEncoded);
+  });
+
+  it('try to obtain secret one more time', async () => {
+    let walletList = await request({
+      uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.wallet.getAddressString()}`,
+      json: true
+    });
+
+    let walletWithPendingOperation = _.find(walletList, wallet => wallet.operations.length);
+
+    const keyEncoded = await request({
+      method: 'POST',
+      uri: `http://localhost:${config.rest.port}/wallet/${walletWithPendingOperation.address}`,
+      body: {
+        pubkey: ctx.users.userFrom.wallet.getPublicKey().toString('hex')
+      },
+      json: true
+    });
+
+    expect(keyEncoded.msg).to.eq('the secret key has already been obtained!');
+
+  });
+
+  it('confirm', async () => {
+
+    let walletList = await request({
+      uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.wallet.getAddressString()}`,
+      json: true
+    });
+
+    let walletWithPendingOperation = _.find(walletList, wallet => wallet.operations.length);
 
     let token = speakeasy.totp({ //client side
-      secret: secret,
+      secret: ctx.users.userFrom.secret,
       encoding: 'base32'
     });
 
@@ -172,10 +310,11 @@ describe('core/2fa', function () {
   });
 
   it('validate balance', async () => {
+    await Promise.delay(10000);
 
-    const transferAmount = ctx.web3.toWei(10, 'ether');
-    const userToBalance = await Promise.promisify(ctx.web3.eth.getBalance)(ctx.users.userTo.address);
-    expect(userToBalance.toNumber()).to.eq(ctx.users.userTo.balance.toNumber() + parseInt(transferAmount));
+    const transferAmount = ctx.users.userTo.web3.toWei(1, 'ether');
+    const userToBalance = await Promise.promisify(ctx.users.userTo.web3.eth.getBalance)(ctx.users.userTo.wallet.getAddressString());
+    expect(userToBalance.toNumber()).to.eq(parseInt(transferAmount));
   });
 
 });

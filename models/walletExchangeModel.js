@@ -35,8 +35,8 @@ const WalletExchange = new mongoose.Schema({
     required: true
   },
   operations: [{type: String}],
+  obtained: {type: Boolean, default: false, required: true},
   created: {type: Date, required: true, default: Date.now}
 });
-
 
 module.exports = mongoose.model(`${config.mongo.data.collectionPrefix}WalletExchange`, WalletExchange);
