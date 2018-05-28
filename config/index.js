@@ -13,6 +13,8 @@ const path = require('path'),
   contract = require('truffle-contract'),
   speakeasy = require('speakeasy'),
   EthCrypto = require('eth-crypto'),
+  Promise = require('bluebird'),
+  web3 = require('web3'),
   WalletProvider = require('../providers'),
   wallet = require('ethereumjs-wallet').fromPrivateKey(Buffer.from(process.env.ORACLE_PRIVATE_KEY, 'hex')),
   requireAll = require('require-all'),
@@ -45,7 +47,7 @@ let config = {
       uri: process.env.NODERED_MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/data',
       collectionPrefix: process.env.NODE_RED_MONGO_COLLECTION_PREFIX || '',
     },
-    useLocalStorage: false,
+    useLocalStorage: true,
     httpServer: true,
     autoSyncMigrations: process.env.NODERED_AUTO_SYNC_MIGRATIONS || true,
     customNodesDir: [path.join(__dirname, '../')],
@@ -56,7 +58,9 @@ let config = {
       },
       libs: {
         speakeasy: speakeasy,
-        EthCrypto: EthCrypto
+        EthCrypto: EthCrypto,
+        web3: web3,
+        Promise: Promise
       },
       contracts: contracts,
       settings: {
