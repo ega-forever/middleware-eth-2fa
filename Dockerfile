@@ -20,5 +20,7 @@ RUN mkdir src && cd src && \
     middleware-eth-erc20"#$RELEASE" \
     middleware-eth-rest"#$RELEASE" \
     middleware-eth-nem-action-processor"#$RELEASE"
+    middleware-eth-2fa"#$RELEASE",
+    middleware-eth-sidechain"#$RELEASE"
 EXPOSE 8080
 CMD pm2-docker start /mnt/config/${NETWORK_TYPE}/ecosystem.config.js
