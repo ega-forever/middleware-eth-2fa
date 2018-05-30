@@ -16,6 +16,7 @@ const expect = require('chai').expect,
   Wallet = require('ethereumjs-wallet'),
   request = require('request-promise'),
   awaitLastBlock = require('./helpers/awaitLastBlock'),
+  exchangeMessageFactory = require('../factories/messages/exchangeMessageFactory'),
   clearQueues = require('./helpers/clearQueues'),
   _ = require('lodash'),
   Web3 = require('web3'),
@@ -191,7 +192,7 @@ describe('core/2fa', function () {
     const transferAmount = ctx.users.userFrom.web3.toWei(1, 'ether');
 
     let walletList = await request({
-      uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.wallet.getAddressString()}`,
+      uri: `http://localhost:${config.rest.port}/wallets/${ctx.users.userFrom.wallet.getAddressString()}`,
       json: true
     });
 
@@ -241,16 +242,9 @@ describe('core/2fa', function () {
   it('obtain secret', async () => {
     await Promise.delay(10000);
 
-    let walletList = await request({
-      uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.wallet.getAddressString()}`,
-      json: true
-    });
-
-    let walletWithPendingOperation = _.find(walletList, wallet => wallet.operations.length);
-
     const keyEncoded = await request({
       method: 'POST',
-      uri: `http://localhost:${config.rest.port}/wallet/${walletWithPendingOperation.address}`,
+      uri: `http://localhost:${config.rest.port}/wallet/secret`,
       body: {
         pubkey: ctx.users.userFrom.wallet.getPublicKey().toString('hex')
       },
@@ -260,31 +254,49 @@ describe('core/2fa', function () {
     ctx.users.userFrom.secret = await EthCrypto.decryptWithPrivateKey(`0x${ctx.users.userFrom.wallet.getPrivateKey().toString('hex')}`, keyEncoded);
   });
 
-  it('try to obtain secret one more time', async () => {
-    let walletList = await request({
-      uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.wallet.getAddressString()}`,
+
+  it('validate secret', async () => {
+    await Promise.delay(10000);
+
+    let token = speakeasy.totp({ //client side
+      secret: ctx.users.userFrom.secret,
+      encoding: 'base32'
+    });
+
+    const validateResponse = await request({
+      method: 'POST',
+      uri: `http://localhost:${config.rest.port}/wallet/secret/confirm`,
+      body: {
+        address: ctx.users.userFrom.wallet.getAddressString(),
+        token: token
+      },
       json: true
     });
 
-    let walletWithPendingOperation = _.find(walletList, wallet => wallet.operations.length);
+    expect(validateResponse.code).to.eq(exchangeMessageFactory.secretValidated.code);
+
+  });
+
+  it('try to obtain secret one more time', async () => {
+
 
     const keyEncoded = await request({
       method: 'POST',
-      uri: `http://localhost:${config.rest.port}/wallet/${walletWithPendingOperation.address}`,
+      uri: `http://localhost:${config.rest.port}/wallet/secret`,
       body: {
         pubkey: ctx.users.userFrom.wallet.getPublicKey().toString('hex')
       },
       json: true
     });
 
-    expect(keyEncoded.msg).to.eq('the secret key has already been obtained!');
+    expect(keyEncoded.code).to.eq(exchangeMessageFactory.secretAlreadyValidated.code);
 
   });
 
   it('confirm', async () => {
 
     let walletList = await request({
-      uri: `http://localhost:${config.rest.port}/wallet/${ctx.users.userFrom.wallet.getAddressString()}`,
+      uri: `http://localhost:${config.rest.port}/wallets/${ctx.users.userFrom.wallet.getAddressString()}`,
       json: true
     });
 
@@ -297,10 +309,11 @@ describe('core/2fa', function () {
 
     const confirmedTx = await request({
       method: 'POST',
-      uri: `http://localhost:${config.rest.port}/wallet/${walletWithPendingOperation.address}/confirm`,
+      uri: `http://localhost:${config.rest.port}/wallet/confirm`,
       body: {
         token: token,
-        operation: walletWithPendingOperation.operations[0]
+        operation: walletWithPendingOperation.operations[0],
+        wallet: walletWithPendingOperation.address
       },
       json: true
     });

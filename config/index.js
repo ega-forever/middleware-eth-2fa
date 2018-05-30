@@ -13,6 +13,7 @@ const path = require('path'),
   contract = require('truffle-contract'),
   speakeasy = require('speakeasy'),
   EthCrypto = require('eth-crypto'),
+  exchangeMessageFactory = require('../factories/messages/exchangeMessageFactory'),
   Promise = require('bluebird'),
   web3 = require('web3'),
   WalletProvider = require('../providers'),
@@ -55,6 +56,11 @@ let config = {
     functionGlobalContext: {
       connections: {
         primary: mongoose
+      },
+      factories: {
+        messages: {
+          exchange: exchangeMessageFactory
+        }
       },
       libs: {
         speakeasy: speakeasy,
