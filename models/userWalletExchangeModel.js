@@ -20,11 +20,11 @@ require('mongoose-long')(mongoose);
  * @param  {Object} obj Describes account's model
  * @return {Object} Model's object
  */
-const WalletExchange = new mongoose.Schema({
+const UserWalletExchange = new mongoose.Schema({
   owner: {type: String, required: true},
-  address: {type: String, unique: true, required: true},
-  operations: [{type: String}],
+  secret: {type: String, required: true},
+  validated: {type: Boolean, default: false, required: true},
   created: {type: Date, required: true, default: Date.now}
 });
 
-module.exports = mongoose.model(`${config.mongo.data.collectionPrefix}WalletExchange`, WalletExchange);
+module.exports = mongoose.model(`${config.mongo.data.collectionPrefix}UserWalletExchange`, UserWalletExchange);
