@@ -48,6 +48,7 @@ let config = {
       uri: process.env.NODERED_MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/data',
       collectionPrefix: process.env.NODE_RED_MONGO_COLLECTION_PREFIX || '',
     },
+    migrationsInOneFile: true,
     useLocalStorage: true,
     httpServer: true,
     autoSyncMigrations: process.env.NODERED_AUTO_SYNC_MIGRATIONS || true,
