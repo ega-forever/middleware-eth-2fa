@@ -24,6 +24,10 @@ const UserWalletExchange = new mongoose.Schema({
   owner: {type: String, required: true},
   secret: {type: String, required: true},
   validated: {type: Boolean, default: false, required: true},
+  wallets: [{
+    address: {type: String},
+    created: {type: Date, required: true, default: Date.now}
+  }],
   created: {type: Date, required: true, default: Date.now}
 });
 

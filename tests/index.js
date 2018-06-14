@@ -300,9 +300,10 @@ describe('core/2fa', function () {
       json: true
     });
 
-    let walletWithPendingOperation = _.find(walletList, wallet => wallet.operations.length);
+    let wallet = ctx.contracts.Wallet.at(walletList[0].address);
+    let pendings = await wallet.getPendings();
 
-    let token = speakeasy.totp({ //client side
+    let token = speakeasy.totp({ //client sideхмм
       secret: ctx.users.userFrom.secret,
       encoding: 'base32'
     });
@@ -312,8 +313,8 @@ describe('core/2fa', function () {
       uri: `http://localhost:${config.rest.port}/wallet/confirm`,
       body: {
         token: token,
-        operation: walletWithPendingOperation.operations[0],
-        wallet: walletWithPendingOperation.address
+        operation: pendings[1][0],
+        wallet: wallet.address
       },
       json: true
     });
@@ -433,7 +434,8 @@ describe('core/2fa', function () {
       json: true
     });
 
-    let walletWithPendingOperation = _.find(walletList, wallet => wallet.operations.length);
+    let wallet = ctx.contracts.Wallet.at(walletList[1].address);
+    let pendings = await wallet.getPendings();
 
     let token = speakeasy.totp({ //client side
       secret: ctx.users.userFrom.secret,
@@ -445,8 +447,8 @@ describe('core/2fa', function () {
       uri: `http://localhost:${config.rest.port}/wallet/confirm`,
       body: {
         token: token,
-        operation: walletWithPendingOperation.operations[0],
-        wallet: walletWithPendingOperation.address
+        operation: pendings[1][0],
+        wallet: wallet.address
       },
       json: true
     });
