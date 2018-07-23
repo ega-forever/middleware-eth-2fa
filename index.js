@@ -11,6 +11,7 @@
 
 const config = require('./config'),
   mongoose = require('mongoose'),
+  models = require('./models'),
   Promise = require('bluebird'),
   path = require('path'),
   bunyan = require('bunyan'),
@@ -21,18 +22,18 @@ const config = require('./config'),
 
 mongoose.Promise = Promise;
 mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri);
+mongoose.data = mongoose.createConnection(config.mongo.data.uri);
 
-mongoose.accounts.on('disconnected', function () {
-  log.error('mongo disconnected!');
-  process.exit(0);
-});
+[mongoose.accounts, mongoose.data].forEach(connection =>
+  connection.on('disconnected', function () {
+    log.error('mongo disconnected!');
+    process.exit(0);
+  })
+);
 
 const init = async () => {
 
-  require('require-all')({
-    dirname: path.join(__dirname, '/models'),
-    filter: /(.+Model)\.js$/
-  });
+  models.init();
 
   if (config.nodered.autoSyncMigrations)
     await migrator.run(config.nodered.mongo.uri, path.join(__dirname, 'migrations'), `_${_.get(config, 'nodered.mongo.collectionPrefix', '')}migrations`, config.nodered.useLocalStorage);

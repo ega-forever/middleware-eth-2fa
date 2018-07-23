@@ -12,7 +12,9 @@ require('dotenv').config();
 const path = require('path'),
   contract = require('truffle-contract'),
   speakeasy = require('speakeasy'),
-  EthCrypto = require('eth-crypto'),
+  decryptWithPrivKeyUtil = require('../utils/crypto/decryptWithPrivKey'),
+  encryptWithPubKeyUtil = require('../utils/crypto/encryptWithPubKey'),
+  pubKeyToAddressUtil = require('../utils/crypto/pubKeyToAddress'),
   exchangeMessageFactory = require('../factories/messages/exchangeMessageFactory'),
   Promise = require('bluebird'),
   web3 = require('web3'),
@@ -48,6 +50,7 @@ let config = {
       uri: process.env.NODERED_MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/data',
       collectionPrefix: process.env.NODE_RED_MONGO_COLLECTION_PREFIX || '',
     },
+    httpAdminRoot: '/admin',
     migrationsInOneFile: true,
     useLocalStorage: true,
     httpServer: true,
@@ -65,7 +68,13 @@ let config = {
       },
       libs: {
         speakeasy: speakeasy,
-        EthCrypto: EthCrypto,
+        utils: {
+          crypto: {
+            decryptWithPrivKey: decryptWithPrivKeyUtil,
+            encryptWithPubKey: encryptWithPubKeyUtil,
+            pubKeyToAddress: pubKeyToAddressUtil
+          }
+        },
         web3: web3,
         Promise: Promise
       },

@@ -31,4 +31,4 @@ const UserWalletExchange = new mongoose.Schema({
   created: {type: Date, required: true, default: Date.now}
 });
 
-module.exports = mongoose.model(`${config.mongo.data.collectionPrefix}UserWalletExchange`, UserWalletExchange);
+module.exports = mongoose.data.model(`${config.mongo.data.collectionPrefix}UserWalletExchange`, UserWalletExchange);
