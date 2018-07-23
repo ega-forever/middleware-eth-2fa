@@ -21,11 +21,20 @@ const config = require('./config'),
 
 mongoose.Promise = Promise;
 mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri);
+mongoose.data = mongoose.createConnection(config.mongo.data.uri);
 
 mongoose.accounts.on('disconnected', function () {
   log.error('mongo disconnected!');
   process.exit(0);
 });
+
+
+[mongoose.accounts, mongoose.data].forEach(connection =>
+  connection.on('disconnected', function () {
+    log.error('mongo disconnected!');
+    process.exit(0);
+  })
+);
 
 const init = async () => {
 

@@ -1,6 +1,6 @@
 # middleware-eth-2fa [![Build Status](https://travis-ci.org/ChronoBank/middleware-eth-2fa.svg?branch=master)](https://travis-ci.org/ChronoBank/middleware-eth-2fa)
 
-Middleware service for handling incoming transactions
+Middleware service for performing 2fa authentication
 
 ### Installation
 
