@@ -15,8 +15,8 @@ const config = require('./config'),
   fs = require('fs-extra'),
   spawn = require('child_process').spawn,
   Wallet = require('ethereumjs-wallet'),
-  //fuzzTests = require('./fuzz'),
-  //performanceTests = require('./performance'),
+  fuzzTests = require('./fuzz'),
+  performanceTests = require('./performance'),
   featuresTests = require('./features'),
   blockTests = require('./blocks'),
   Promise = require('bluebird'),
@@ -119,12 +119,12 @@ describe('core/2fa', function () {
   });
 
 
-  describe('block', () => blockTests(ctx));
+  //describe('block', () => blockTests(ctx));
 
-  //describe('performance', () => performanceTests(ctx));
+  describe('performance', () => performanceTests(ctx));
 
   //describe('fuzz', () => fuzzTests(ctx));
 
-  describe('features', () => featuresTests(ctx));
+  //describe('features', () => featuresTests(ctx));
 
 });
