@@ -18,7 +18,7 @@ const config = require('./config'),
   //fuzzTests = require('./fuzz'),
   //performanceTests = require('./performance'),
   featuresTests = require('./features'),
-  //blockTests = require('./blocks'),
+  blockTests = require('./blocks'),
   Promise = require('bluebird'),
   path = require('path'),
   Web3 = require('web3'),
@@ -91,6 +91,12 @@ describe('core/2fa', function () {
       },
       userTo: {
         wallet: Wallet.generate('5678')
+      },
+      userFrom2: {
+        wallet: Wallet.generate('91011')
+      },
+      userTo2: {
+        wallet: Wallet.generate('121314')
       }
     };
 
@@ -113,7 +119,7 @@ describe('core/2fa', function () {
   });
 
 
-  //describe('block', () => blockTests(ctx));
+  describe('block', () => blockTests(ctx));
 
   //describe('performance', () => performanceTests(ctx));
 
