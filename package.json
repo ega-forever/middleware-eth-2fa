@@ -21,7 +21,7 @@
   },
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint.js -c .eslintrc.js --ext .js --fix --ignore-path .eslintignore .",
-    "test": "node ./node_modules/mocha/bin/mocha -t 600000 tests/index.js",
+    "test": "node ./node_modules/mocha/bin/mocha -t 1200000 tests/index.js",
     "migrate_red": "node ./node_modules/middleware_service.sdk/migrate.js run"
   },
   "author": "chronobank",

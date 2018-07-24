@@ -53,7 +53,7 @@ const server = net.createServer(stream => {
     try {
       const stringMsg = c.toString();
       RPCServer.provider.sendAsync(JSON.parse(stringMsg), (err, data) => {
-        if(!stream.destroyed) {
+        if (!stream.destroyed) {
           stream.cork();
           stream.write(JSON.stringify(err || data));
           process.nextTick(() => stream.uncork());
@@ -115,10 +115,11 @@ if (process.platform === 'win32') {
 }
 
 process.on('SIGINT', function () {
-  try {
-    removePipeFile(web3ProviderUri);
-  } catch (e) {
-  }
+  if (process.platform !== 'win32')
+    try {
+      removePipeFile(web3ProviderUri);
+    } catch (e) {
+    }
   process.exit();
 });
 

@@ -17,7 +17,7 @@ const expect = require('chai').expect,
   Wallet = require('ethereumjs-wallet'),
   request = require('request-promise'),
   exchangeMessageFactory = require('../factories/messages/exchangeMessageFactory'),
-  clearQueues = require('./helpers/clearQueues'),
+ // clearQueues = require('./helpers/clearQueues'),
   _ = require('lodash'),
   Web3 = require('web3'),
   amqp = require('amqplib');
@@ -28,7 +28,7 @@ describe('core/2fa', function () {
 
   before(async () => {
     ctx.amqpInstance = await amqp.connect(config.nodered.functionGlobalContext.settings.rabbit.url);
-    await clearQueues(ctx.amqpInstance);
+    //await clearQueues(ctx.amqpInstance);
 
     ctx.contracts = config.nodered.functionGlobalContext.contracts;
 
@@ -37,7 +37,7 @@ describe('core/2fa', function () {
         wallet: Wallet.fromPrivateKey(Buffer.from(process.env.OWNER_PRIVATE_KEY, 'hex'))
       },
       middleware: {
-        wallet: config.nodered.functionGlobalContext.settings.web3.wallet
+        wallet: config.nodered.functionGlobalContext.settings.web3.wallet.get()
       },
       userFrom: {
         wallet: Wallet.generate('1234')
@@ -59,7 +59,7 @@ describe('core/2fa', function () {
   });
 
   afterEach(async () => {
-    await clearQueues(ctx.amqpInstance);
+    //await clearQueues(ctx.amqpInstance);
   });
 
   it('validating users balances has enough ethers', async () => {

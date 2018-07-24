@@ -7,11 +7,13 @@
 require('dotenv/config');
 process.env.LOG_LEVEL = 'error';
 
-const config = require('../config'),
-  models = require('../models'),
+const config = require('./config'),
+  models = require('./models'),
+  _ = require('lodash'),
+  contract = require('truffle-contract'),
+  requireAll = require('require-all'),
   fs = require('fs-extra'),
   spawn = require('child_process').spawn,
-  exec = require('child_process').exec,
   Wallet = require('ethereumjs-wallet'),
   //fuzzTests = require('./fuzz'),
   //performanceTests = require('./performance'),
@@ -20,15 +22,16 @@ const config = require('../config'),
   Promise = require('bluebird'),
   path = require('path'),
   Web3 = require('web3'),
-  dbPath = path.join(__dirname, './utils/node/testrpc_db'),
-  contractBuildPath = path.join(__dirname, 'node_modules/chronobank-smart-contracts/build'),
+  net = require('net'),
+  dbPath = path.join(__dirname, 'utils/node/testrpc_db'),
+  contractPath = path.join(__dirname, '../node_modules/chronobank-smart-contracts'),
+  contractBuildPath = path.join(contractPath, 'build'),
   mongoose = require('mongoose'),
   amqp = require('amqplib'),
-  WalletProvider = require('../providers'),
   ctx = {};
 
 mongoose.Promise = Promise;
-mongoose.data = mongoose.createConnection(config.mongo.accounts.uri, {useMongoClient: true});
+mongoose.data = mongoose.createConnection(config.mongo.data.uri, {useMongoClient: true});
 mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri, {useMongoClient: true});
 
 
@@ -36,32 +39,52 @@ describe('core/2fa', function () {
 
   before(async () => {
     models.init();
-
     ctx.amqp = {};
-    ctx.amqp.instance = await amqp.connect(config.nodered.functionGlobalContext.settings.rabbit.url);
+    ctx.amqp.instance = await amqp.connect(config.rabbit.url);
     ctx.amqp.channel = await ctx.amqp.instance.createChannel();
     await ctx.amqp.channel.assertExchange('events', 'topic', {durable: false});
 
+    const isDbExist = fs.existsSync(dbPath);
 
-    await fs.remove(dbPath);
-    //ctx.nodePid = spawn('node', ['ipcConverter.js'], {env: process.env, stdio: 'ignore'});
     ctx.nodePid = spawn('node', ['tests/utils/node/ipcConverter.js'], {env: process.env, stdio: 'inherit'});
     await Promise.delay(5000);
-    await fs.remove(contractBuildPath);
 
-    const { stdout, stderr } = await Promise.promisify(exec)('node ../truffle/build/cli.bundled.js migrate', {env: process.env, stdio: 'inherit', cwd: 'node_modules/chronobank-smart-contracts'});
+    ctx.nodePid.on('exit', function (code, signal) {
+      console.log(`node has gone!`);
+      console.log(code, signal);
+      process.exit(1);
+    });
 
 
-    await Promise.delay(10000);
+    if (!fs.existsSync(contractBuildPath) || !isDbExist) {
 
-    ctx.contracts = config.nodered.functionGlobalContext.contracts;
+      await fs.remove(contractBuildPath);
+
+      const contractDeployPid = spawn('node', ['../truffle/build/cli.bundled.js', 'migrate'], {
+        env: process.env,
+        stdio: 'inherit',
+        cwd: 'node_modules/chronobank-smart-contracts'
+      });
+
+      await new Promise(res =>
+        contractDeployPid.on('exit', function (code, signal) {
+          console.log(`child process exited with code ${code} and signal ${signal}`);
+          res();
+        })
+      );
+    }
+
+    ctx.contracts = requireAll({
+      dirname: path.resolve(__dirname, '../node_modules/chronobank-smart-contracts/build/contracts'),
+      resolve: Contract => contract(Contract)
+    });
 
     ctx.users = {
       owner: {
         wallet: Wallet.fromPrivateKey(Buffer.from(process.env.OWNER_PRIVATE_KEY, 'hex'))
       },
       middleware: {
-        wallet: config.nodered.functionGlobalContext.settings.web3.wallet
+        wallet: Wallet.fromPrivateKey(Buffer.from(process.env.ORACLE_PRIVATE_KEY, 'hex'))
       },
       userFrom: {
         wallet: Wallet.generate('1234')
@@ -71,17 +94,21 @@ describe('core/2fa', function () {
       }
     };
 
-    ctx.users.owner.web3 = new Web3(new WalletProvider(ctx.users.owner.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
-    ctx.users.userFrom.web3 = new Web3(new WalletProvider(ctx.users.userFrom.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
-    ctx.users.userTo.web3 = new Web3(new WalletProvider(ctx.users.userTo.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
-    ctx.users.middleware.web3 = new Web3(new WalletProvider(ctx.users.middleware.wallet, process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'));
+    const web3ProviderUri = process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc';
 
+    const provider = /http:\/\//.test(web3ProviderUri) ?
+      new Web3.providers.HttpProvider(web3ProviderUri) :
+      new Web3.providers.IpcProvider(`${/^win/.test(process.platform) ? '\\\\.\\pipe\\' : ''}${web3ProviderUri}`, net);
+
+    ctx.web3 = new Web3(provider)
   });
 
   after(async () => {
     mongoose.disconnect();
     mongoose.accounts.close();
     await ctx.amqp.instance.close();
+    if (_.has(ctx.web3.currentProvider, 'connection.destroy'))
+      ctx.web3.currentProvider.connection.destroy();
     ctx.nodePid.kill();
   });
 
