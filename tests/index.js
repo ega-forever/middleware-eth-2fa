@@ -31,8 +31,8 @@ const config = require('./config'),
   ctx = {};
 
 mongoose.Promise = Promise;
-mongoose.data = mongoose.createConnection(config.mongo.data.uri, {useMongoClient: true});
-mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri, {useMongoClient: true});
+mongoose.data = mongoose.createConnection(config.mongo.data.uri);
+mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri);
 
 
 describe('core/2fa', function () {
@@ -46,7 +46,7 @@ describe('core/2fa', function () {
 
     const isDbExist = fs.existsSync(dbPath);
 
-    ctx.nodePid = spawn('node', ['tests/utils/node/ipcConverter.js'], {env: process.env, stdio: 'inherit'});
+    ctx.nodePid = spawn('node', ['--max_old_space_size=4096', 'tests/utils/node/ipcConverter.js'], {env: process.env, stdio: 'inherit'});
     await Promise.delay(5000);
 
     ctx.nodePid.on('exit', function (code, signal) {
@@ -119,12 +119,12 @@ describe('core/2fa', function () {
   });
 
 
-  //describe('block', () => blockTests(ctx));
+  describe('block', () => blockTests(ctx));
 
   describe('performance', () => performanceTests(ctx));
 
-  //describe('fuzz', () => fuzzTests(ctx));
+  describe('fuzz', () => fuzzTests(ctx));
 
-  //describe('features', () => featuresTests(ctx));
+  describe('features', () => featuresTests(ctx));
 
 });

@@ -11,7 +11,8 @@
  */
 
 const mongoose = require('mongoose'),
-  config = require('../config');
+  config = require('../config'),
+  speakeasy = require('speakeasy');
 
 require('mongoose-long')(mongoose);
 
@@ -22,7 +23,7 @@ require('mongoose-long')(mongoose);
  */
 const UserWalletExchange = new mongoose.Schema({
   owner: {type: String, required: true},
-  secret: {type: String, required: true},
+  secret: {type: String, required: true, default: () => speakeasy.generateSecret({length: 20}).base32},
   validated: {type: Boolean, default: false, required: true},
   wallets: [{
     address: {type: String},
