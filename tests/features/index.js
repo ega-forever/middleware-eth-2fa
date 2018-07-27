@@ -13,6 +13,7 @@ const models = require('../models'),
   exchangeMessageFactory = require('../../factories/messages/exchangeMessageFactory'),
   Web3 = require('web3'),
   config = require('../config'),
+  Wallet = require('ethereumjs-wallet'),
   spawn = require('child_process').spawn,
   WalletProvider = require('../../providers'),
   request = require('request-promise'),
@@ -23,6 +24,21 @@ module.exports = (ctx) => {
 
   before(async () => {
     await models.userWalletExchangeModel.remove({});
+
+    ctx.users.userFrom = {
+      wallet: Wallet.generate(_.random(Math.pow(10, 4), Math.pow(10, 6)))
+    };
+    ctx.users.userTo = {
+      wallet: Wallet.generate(_.random(Math.pow(10, 4), Math.pow(10, 6)))
+    };
+
+    ctx.users.userFrom2 = {
+      wallet: Wallet.generate(_.random(Math.pow(10, 4), Math.pow(10, 6)))
+    };
+    ctx.users.userTo2 = {
+      wallet: Wallet.generate(_.random(Math.pow(10, 4), Math.pow(10, 6)))
+    };
+
     ctx.service2faPid = spawn('node', ['index.js'], {env: process.env, stdio: 'ignore'});
     await Promise.delay(20000);
   });
@@ -47,7 +63,7 @@ module.exports = (ctx) => {
       return;
 
     await new Promise(res => {
-      let intervalId = setInterval(async ()=>{
+      let intervalId = setInterval(async () => {
         if (error)
           return;
         let tx = await Promise.promisify(web3.eth.getTransaction)(userFromTransferTx);
@@ -467,7 +483,7 @@ module.exports = (ctx) => {
       return;
 
     await new Promise(res => {
-      let intervalId = setInterval(async ()=>{
+      let intervalId = setInterval(async () => {
         if (error)
           return;
         let tx = await Promise.promisify(web3.eth.getTransaction)(userFromTransferTx);

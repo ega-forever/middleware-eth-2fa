@@ -10,7 +10,7 @@
     "ethereumjs-util": "^5.2.0",
     "lodash": "^4.17.4",
     "middleware_service.sdk": "github:chronobank/middleware-service-sdk",
-    "mongoose": "^5.2.5",
+    "mongoose": "^4.11.11",
     "mongoose-long": "^0.1.1",
     "require-all": "^2.2.0",
     "secp256k1": "^3.5.0",

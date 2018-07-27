@@ -34,7 +34,7 @@ if (!fs.existsSync(dbPath))
 
 let RPCServer = TestRPC.server({accounts: accounts, default_balance_ether: 500, db_path: dbPath, network_id: 86});
 RPCServer.listen(parseInt(process.env.RPC_PORT || 8545));
-const web3ProviderUri = `${/^win/.test(process.platform) ? '\\\\.\\pipe\\' : ''}${process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc'}`;
+const web3ProviderUri = `${/^win/.test(process.platform) ? '\\\\.\\pipe\\' : ''}${process.env.WEB3_URI || '/tmp/development/geth.ipc'}`;
 
 let addresses = _.chain(RPCServer.provider.manager.state.accounts)
   .toPairs()

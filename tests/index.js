@@ -24,6 +24,7 @@ const config = require('./config'),
   Web3 = require('web3'),
   net = require('net'),
   dbPath = path.join(__dirname, 'utils/node/testrpc_db'),
+  flowsPath = path.join(__dirname, '../flows.json'),
   contractPath = path.join(__dirname, '../node_modules/chronobank-smart-contracts'),
   contractBuildPath = path.join(contractPath, 'build'),
   mongoose = require('mongoose'),
@@ -74,6 +75,14 @@ describe('core/2fa', function () {
       );
     }
 
+    if(!fs.existsSync(flowsPath)){
+      const service2faPid = spawn('node', ['index.js'], {env: process.env, stdio: 'ignore'});
+      await Promise.delay(10000);
+      service2faPid.kill();
+    }
+
+    ctx.flows = require('../flows');
+
     ctx.contracts = requireAll({
       dirname: path.resolve(__dirname, '../node_modules/chronobank-smart-contracts/build/contracts'),
       resolve: Contract => contract(Contract)
@@ -85,18 +94,6 @@ describe('core/2fa', function () {
       },
       middleware: {
         wallet: Wallet.fromPrivateKey(Buffer.from(process.env.ORACLE_PRIVATE_KEY, 'hex'))
-      },
-      userFrom: {
-        wallet: Wallet.generate('1234')
-      },
-      userTo: {
-        wallet: Wallet.generate('5678')
-      },
-      userFrom2: {
-        wallet: Wallet.generate('91011')
-      },
-      userTo2: {
-        wallet: Wallet.generate('121314')
       }
     };
 
@@ -118,13 +115,12 @@ describe('core/2fa', function () {
     ctx.nodePid.kill();
   });
 
-
   describe('block', () => blockTests(ctx));
+
+  describe('features', () => featuresTests(ctx));
 
   describe('performance', () => performanceTests(ctx));
 
   describe('fuzz', () => fuzzTests(ctx));
-
-  describe('features', () => featuresTests(ctx));
 
 });

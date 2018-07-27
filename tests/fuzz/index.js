@@ -11,6 +11,7 @@ const models = require('../models'),
   Web3 = require('web3'),
   config = require('../config'),
   spawn = require('child_process').spawn,
+  Wallet = require('ethereumjs-wallet'),
   WalletProvider = require('../../providers'),
   expect = require('chai').expect,
   Promise = require('bluebird');
@@ -19,6 +20,14 @@ module.exports = (ctx) => {
 
   before(async () => {
     await models.userWalletExchangeModel.remove({});
+
+    ctx.users.userFrom = {
+      wallet: Wallet.generate(_.random(Math.pow(10, 4), Math.pow(10, 6)))
+    };
+    ctx.users.userTo = {
+      wallet: Wallet.generate(_.random(Math.pow(10, 4), Math.pow(10, 6)))
+    };
+
     ctx.service2faPid = spawn('node', ['index.js'], {env: process.env, stdio: 'ignore'});
     await Promise.delay(20000);
   });
