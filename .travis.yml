@@ -15,32 +15,16 @@ before_install:
   - sudo apt-get install python2.7 git-all pkg-config libncurses5-dev libssl-dev libnss3-dev libexpat-dev libc6-dev -y
 
 install:
-  - sudo rabbitmq-plugins enable rabbitmq_web_stomp
   - npm install
-  - npm install -g pm2
 
 before_script:
-
-    - export SMART_CONTRACTS_PATH=$TRAVIS_BUILD_DIR/node_modules/chronobank-smart-contracts/build/contracts
-    - export ORACLE_PRIVATE_KEY=993130d3dd4de71254a94a47fdacb1c9f90dd33be8ad06b687bd95f073514a97
-    - export OWNER_PRIVATE_KEY=6b9027372deb53f4ae973a5614d8a57024adf33126ece6b587d9e08ba901c0d2
-    - export WEB3_TEST_URI=http://localhost:8545
-    - export RABBIT_SERVICE_NAME=app_eth
-
-    - cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.blockProcessor && pm2 start ipcConverter.js
-    - cd $TRAVIS_BUILD_DIR/node_modules/chronobank-smart-contracts && rm -rf build
-    - cd $TRAVIS_BUILD_DIR/node_modules/chronobank-smart-contracts && ../truffle/build/cli.bundled.js migrate
-    - sleep 30 && cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.blockProcessor && pm2 start index.js
-    - sleep 120 && cd $TRAVIS_BUILD_DIR/node_modules/middleware_eth.chronoSCProcessor && pm2 start index.js
-    - sleep 30 && cd $TRAVIS_BUILD_DIR && pm2 start index.js
-
-
+  - export SMART_CONTRACTS_PATH=$TRAVIS_BUILD_DIR/node_modules/chronobank-smart-contracts/build/contracts
+  - export ORACLE_PRIVATE_KEY=993130d3dd4de71254a94a47fdacb1c9f90dd33be8ad06b687bd95f073514a97
+  - export OWNER_PRIVATE_KEY=6b9027372deb53f4ae973a5614d8a57024adf33126ece6b587d9e08ba901c0d2
+  - export WEB3_TEST_URI=http://localhost:8545
+  - export RABBIT_SERVICE_NAME=app_eth
 script:
-  - sleep 60 && npm test -- --coverage
-
-after_script:
-  - pm2 logs --nostream
-  - pm2 kill && pkill PM2
+  - npm test -- --coverage
 
 after_success:
   - FULL_GCR_KEY="-----BEGIN PRIVATE KEY-----\n"$GCR_KEY"\n-----END PRIVATE KEY-----\n"

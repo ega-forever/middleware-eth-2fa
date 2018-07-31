@@ -1,6 +1,5 @@
 const ProviderEngine = require('web3-provider-engine'),
   FiltersSubprovider = require('web3-provider-engine/subproviders/filters.js'),
-  //WalletSubprovider = require('ethereumjs-wallet/provider-engine'),
   HookedWalletEthTxSubprovider = require('web3-provider-engine/subproviders/hooked-wallet-ethtx'),
   inherits = require('util').inherits,
   Web3Subprovider = require('web3-provider-engine/subproviders/web3.js'),
@@ -9,7 +8,7 @@ const ProviderEngine = require('web3-provider-engine'),
 
 inherits(WalletSubprovider, HookedWalletEthTxSubprovider);
 
-function WalletSubprovider (wallet, opts = {}) {
+function WalletSubprovider(wallet, opts = {}) {
   opts.getAccounts = function (cb) {
 
     cb(null, [wallet.getAddressString()]);
@@ -24,7 +23,7 @@ function WalletSubprovider (wallet, opts = {}) {
   WalletSubprovider.super_.call(this, opts);
 }
 
-function WalletProvider (wallet, uri) {
+function WalletProvider(wallet, provider) {
   this.wallet = wallet;
   this.address = `0x${this.wallet.getAddress().toString('hex')}`;
 
@@ -33,13 +32,14 @@ function WalletProvider (wallet, uri) {
   this.engine.addProvider(new WalletSubprovider(this.wallet));
   this.engine.addProvider(new FiltersSubprovider());
 
-  const provider = /http:\/\//.test(uri) ?
-    new Web3.providers.HttpProvider(uri) :
-    new Web3.providers.IpcProvider(`${/^win/.test(process.platform) ? '\\\\.\\pipe\\' : ''}${uri}`, net);
+  if (!(provider instanceof Web3.providers.HttpProvider || provider instanceof Web3.providers.IpcProvider))
+    provider = /http:\/\//.test(provider) ?
+      new Web3.providers.HttpProvider(provider) :
+      new Web3.providers.IpcProvider(`${/^win/.test(process.platform) ? '\\\\.\\pipe\\' : ''}${provider}`, net);
 
   this.engine.addProvider(new Web3Subprovider(provider));
-
   this.engine.start();
+
 }
 
 WalletProvider.prototype.sendAsync = function () {
