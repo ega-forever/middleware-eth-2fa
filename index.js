@@ -36,9 +36,9 @@ const init = async () => {
   models.init();
 
   if (config.nodered.autoSyncMigrations)
-    await migrator.run(config.nodered.mongo.uri, path.join(__dirname, 'migrations'), `_${_.get(config, 'nodered.mongo.collectionPrefix', '')}migrations`, config.nodered.useLocalStorage);
+    await migrator.run(config, path.join(__dirname, 'migrations'), `_${_.get(config, 'nodered.mongo.collectionPrefix', '')}migrations`);
 
   redInitter(config);
 };
 
-module.exports = init();
+module.exports = init().catch(e=>console.log(e));
